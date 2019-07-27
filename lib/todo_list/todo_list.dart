@@ -1,60 +1,116 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
+import 'package:redux/redux.dart';
+
+
+enum ShowType { all, todo, done }
+
+enum Acts {
+  add, //添加到todo
+  selectAll, //筛选所有
+  selectTodo, //筛选待完成
+  selectDone, //筛选已完成
+}
+
+class TodoState {
+  List<Todo> todos; //列表数据
+  String text; //当前输入文字
+  ShowType showType;//显示类型
+  TodoState({this.todos, this.text, this.showType}); //显示类型
+}
+
+TodoState todoReducer(TodoState input, dynamic action) {
+  switch (action) {
+    case Acts.add:
+      if (input.text != null && input.text != "") {
+        input.todos.add(Todo(sth: input.text, done: false));
+        input.text = "";
+      }
+      break;
+    case Acts.selectAll:
+      input.showType=ShowType.all;
+      break;
+    case Acts.selectTodo:
+      input.showType=ShowType.todo;
+      break;
+    case Acts.selectDone:
+      input.showType=ShowType.done;
+      break;
+  }
+  return input;
+}
+
+
+class Todo {
+  String sth; //待做事项
+  bool done;
+  Todo({this.sth, this.done}); //是否已做完
+}
 
 class TodoList extends StatefulWidget {
+  final Store<TodoState> store;
+
+  TodoList({
+    Key key,
+    this.store,
+  }) : super(key: key);
+
   @override
   _TodoListState createState() => _TodoListState();
 }
 
-enum ShowType { all, todo, done }
-
 class _TodoListState extends State<TodoList> {
-  var todo = <String, bool>{};//列表数据
-  var text;//当前输入文字
-  var showType = ShowType.all;//显示类型
 
   @override
   Widget build(BuildContext context) {
-    var textField = TextField(
-      controller: new TextEditingController(text: this.text),
-      keyboardType: TextInputType.text,
-      textAlign: TextAlign.start,
-      maxLines: 1,
-      cursorColor: Colors.black,
-      cursorWidth: 3,
-      style: TextStyle(
-          fontSize: 16, color: Colors.lightBlue, backgroundColor: Colors.white),
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.white,
-        hintText: '添加一个待办项',
-        hintStyle: TextStyle(color: Colors.black26, fontSize: 14),
-        contentPadding: EdgeInsets.only(left: 14.0, bottom: 8.0, top: 8.0),
-        focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.white),
-          borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(10), bottomLeft: Radius.circular(10)),
-        ),
-        enabledBorder: UnderlineInputBorder(
-          borderSide: BorderSide(color: Colors.white),
-          borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(10), bottomLeft: Radius.circular(10)),
-        ),
-      ),
-      onChanged: (str) {
-        text = str;
+    var textField= StoreConnector<TodoState, TodoState>(
+      converter: (store) =>store.state,//转换器，获取仓库，从仓库拿值
+      builder: (context, state) {//构造器，构建Widget
+        return TextField(
+          controller: TextEditingController(text: state.text),
+          keyboardType: TextInputType.text,
+          textAlign: TextAlign.start,
+          maxLines: 1,
+          cursorColor: Colors.black,
+          cursorWidth: 3,
+          style: TextStyle(
+              fontSize: 16, color: Colors.lightBlue, backgroundColor: Colors.white),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            hintText: '添加一个待办项',
+            hintStyle: TextStyle(color: Colors.black26, fontSize: 14),
+            contentPadding: EdgeInsets.only(left: 14.0, bottom: 8.0, top: 8.0),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.white),
+              borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(10), bottomLeft: Radius.circular(10)),
+            ),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.white),
+              borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(10), bottomLeft: Radius.circular(10)),
+            ),
+          ),
+         onChanged: (str){
+           state.text=str;
+         },
+        );
       },
     );
 
-    var btn = RaisedButton(
-      child: Icon(Icons.add),
-      padding: EdgeInsets.zero,
-      onPressed: () {
-        FocusScope.of(context).requestFocus(FocusNode()); //收起键盘
-        if (text != null && text != "") {
-          todo[text] = false;
-          text = "";
-          setState(() {});
-        }
+    var btn = StoreConnector<TodoState, VoidCallback>(
+      converter:(store) {
+      return () => store.dispatch(Acts.add);//分发动作
+    },
+      builder: (context, callback) {
+        return RaisedButton(
+          child: Icon(Icons.add),
+          padding: EdgeInsets.zero,
+          onPressed: (){
+            callback();
+            FocusScope.of(context).requestFocus(FocusNode());
+          });
       },
     );
 
@@ -77,70 +133,72 @@ class _TodoListState extends State<TodoList> {
       ],
     );
 
-    var op = Row(
+    var listInfo = [
+      ["全部", Acts.selectAll],
+      ["已完成", Acts.selectDone],
+      ["未完成", Acts.selectTodo],
+    ];
+
+    var op = Row(//操作按钮
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: <Widget>[
-        RaisedButton(
-          color: Colors.blue,
-          textTheme: ButtonTextTheme.primary,
-          onPressed: () {
-            showType = ShowType.all;
-            setState(() {});
+      children: listInfo.map((e) {
+        return StoreConnector<TodoState, VoidCallback>(
+          converter: (store) {
+            return () => store.dispatch(e[1]);
           },
-          child: Text("全部"),
-        ),
-        RaisedButton(
-          onPressed: () {
-            showType = ShowType.done;
-            setState(() {});
+          builder: (context, callback) {
+            return RaisedButton(
+              onPressed: callback,
+              child: Text(e[0]),
+              color: Colors.blue,
+            );
           },
-          child: Text("已完成"),
-        ),
-        RaisedButton(
-          onPressed: () {
-            showType = ShowType.todo;
-            setState(() {});
-          },
-          child: Text("未完成"),
-        ),
-      ],
+        );
+      }).toList(),
     );
 
-    return Column(
-      children: <Widget>[inputBtn, op, Expanded(child: showList(showType))],
+    var listView = StoreConnector<TodoState, TodoState>(
+        converter: (store) => store.state, //转换器，获取仓库，从仓库拿值
+        builder: (context, state) {
+          var result;
+          //构造器，构建Widget
+          switch(state.showType){
+            case ShowType.all:
+              result= formList(state.todos);
+              break;
+            case ShowType.todo:
+              result= formList(List.of( state.todos.where((e)=>!e.done)));
+              break;
+            case ShowType.done:
+              result= formList(List.of( state.todos.where((e)=>e.done)));
+              break;
+          }
+         return result;
+        });
+
+    return StoreProvider<TodoState>(
+      store: widget.store,
+      child: Column(
+        children: <Widget>[inputBtn, op, Expanded(child: listView)],
+      ),
     );
   }
 
-  showList(ShowType showType) {
-    switch (showType) {
-      case ShowType.all:
-        return formList(todo);
-        break;
-      case ShowType.todo:
-        return formList(Map.fromEntries(todo.entries.where((e) => !e.value)));
-        break;
-      case ShowType.done:
-        return formList(Map.fromEntries(todo.entries.where((e) => e.value)));
-        break;
-    }
-  }
-
-  Widget formList(Map<String, bool> todo) {
+  Widget formList(List<Todo> todos) {
     return ListView.builder(
-      itemCount: todo.length,
+      itemCount: todos.length,
       padding: EdgeInsets.all(8.0),
       itemExtent: 50.0,
       itemBuilder: (BuildContext context, int index) {
-        var key = todo.keys.toList()[index];
-        var value = todo.values.toList()[index];
+        var key = todos[index].sth;
+        var value = todos[index].done;
         var text = Align(
           child: Text(
-            todo.keys.toList()[index],
+            key,
             style: TextStyle(
                 decorationThickness: 3,
-                decoration: value
-                    ? TextDecoration.lineThrough
-                    : TextDecoration.none,
+                decoration:
+                    value ? TextDecoration.lineThrough : TextDecoration.none,
                 decorationColor: Colors.blue),
           ),
           alignment: Alignment.centerLeft,
@@ -151,10 +209,10 @@ class _TodoListState extends State<TodoList> {
             children: <Widget>[
               Checkbox(
                 onChanged: (b) {
-                  todo[key] = b;
+                  todos[index].done = b;
                   setState(() {});
                 },
-                value: todo.values.toList()[index],
+                value: todos[index].done,
               ),
               text
             ],
