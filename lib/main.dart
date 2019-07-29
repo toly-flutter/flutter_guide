@@ -1,11 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_guide/todo_list/use_todo.dart';
+import 'package:flutter_guide/text_field_test.dart';
 
-import 'first_demo_by_redux/redux_app.dart';
 
 void main() {
-  runApp(ReduxPage(
-    store: store,
+
+
+
+
+  runApp(MaterialApp(
+    theme: ThemeData(
+      primarySwatch: Colors.blue,
+    ),
+    home: Scaffold(
+      appBar: AppBar(
+        title: Text("Flutter之旅"),
+      ),
+      body: Padding(padding: EdgeInsets.all(20),child: Center(child: InputTest(),),),
+    ),
   ));
 
 //    runApp(TodoPage());
